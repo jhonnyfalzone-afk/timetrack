@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it" translate="no">
+<html lang="it" translate="no" class="notranslate">
 <head>
 <meta charset="UTF-8">
   <meta name="google" content="notranslate">
@@ -444,8 +444,7 @@
   <div class="setup-box">
     <div class="setup-title">⚙️ Configurazione Firebase</div>
     <p class="setup-step">
-      Per far funzionare l'app in tempo reale su tutti i dispositivi, hai bisogno di un database gratuito Firebase.<br><br>
-      <span class="step-num">1</span> Vai su <strong>console.firebase.google.com</strong> e accedi con Google<br>
+      Per far funzionare l'app in tempo reale su tutti i dispositivi, hai bisogno di un database gratuito Firebase.<br><br> <span class="step-num">1</span> Vai su <strong>console.firebase.google.com</strong> e accedi con Google<br>
       <span class="step-num">2</span> Clicca <strong>"Crea un progetto"</strong> → dai un nome → continua<br>
       <span class="step-num">3</span> Nel menu a sinistra: <strong>Firestore Database</strong> → Crea database → <em>Modalità test</em><br>
       <span class="step-num">4</span> Torna alla Home → <strong>"Aggiungi app"</strong> → icona Web (&lt;/&gt;)<br>
@@ -454,13 +453,11 @@
     <div class="field">
       <label>Incolla qui il tuo firebaseConfig (JSON)</label>
       <textarea id="firebaseConfigInput" rows="7" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;color:var(--text);font-family:monospace;font-size:12px;outline:none;resize:none;line-height:1.5;"
-        placeholder='{
-  "apiKey": "...",
+        placeholder='{ "apiKey": "...",
   "authDomain": "...",
   "projectId": "...",
   ...
-}'></textarea>
-    </div>
+}'></textarea> </div>
     <button class="btn-primary" onclick="saveFirebaseConfig()">Salva e Continua →</button>
     <div class="error-msg" id="setupError"></div>
     <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:14px;">
@@ -607,8 +604,7 @@
           </div>
           <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7;">
             📌 Se sei ancora IN SEDE all'orario scelto ricevi una notifica sul telefono per ricordarti di timbrare l'uscita.<br><br>
-            ☀️ Ricevi anche un reminder alle <strong style="color:var(--text)">9:00</strong> se non hai ancora timbrato l'entrata.
-          </p>
+            ☀️ Ricevi anche un reminder alle <strong style="color:var(--text)">9:00</strong> se non hai ancora timbrato l'entrata. </p>
           <button class="btn-primary" onclick="saveReminderHour()" style="margin-bottom:10px;">💾 Salva orario reminder</button>
           <button onclick="testNotification()" style="width:100%;padding:14px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:12px;font-family:inherit;font-size:14px;cursor:pointer;margin-top:4px;">🔔 Invia notifica di prova</button>
         </div>
@@ -878,6 +874,10 @@ window.doLogin = async function() {
 }
 
 window.doLogout = function() {
+  if (typeof _unsubLog !== 'undefined' && _unsubLog) { _unsubLog(); _unsubLog = null; }
+  if (typeof _unsubToday !== 'undefined' && _unsubToday) { _unsubToday(); _unsubToday = null; }
+  if (typeof _unsubTimbList !== 'undefined' && _unsubTimbList) { _unsubTimbList(); _unsubTimbList = null; }
+  if (unsubscribeLive) { unsubscribeLive(); unsubscribeLive = null; }
   currentUser = null;
   if (unsubscribeLive) { unsubscribeLive(); unsubscribeLive = null; }
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
@@ -1031,17 +1031,20 @@ window.showCapoTab = function(name, btn) {
 }
 
 // ===================== COLLABORATORE: STATO OGGI =====================
-async function loadTodayStatus() {
+let _unsubToday = null;
+function loadTodayStatus() {
   const { query: q, collection: c, where: w } = window._fbModules;
   const today = todayStr();
-  try {
-    const snap = await getDocs(q(c(db, 'punches'), w('userId', '==', currentUser.id), w('date', '==', today)));
-    const punches = [];
-    snap.forEach(d => punches.push(d.data()));
-    updatePunchUI(punches);
-  } catch(e) {
-    showToast('⚠️ Errore caricamento stato: ' + e.message);
-  }
+  if (_unsubToday) { _unsubToday(); _unsubToday = null; }
+  _unsubToday = onSnapshot(
+    q(c(db, 'punches'), w('userId', '==', currentUser.id), w('date', '==', today)),
+    (snap) => {
+      const punches = [];
+      snap.forEach(d => punches.push(d.data()));
+      updatePunchUI(punches);
+    },
+    (err) => { showToast('⚠️ Errore: ' + err.message); }
+  );
 }
 
 function updatePunchUI(punches) {
@@ -1129,36 +1132,30 @@ window.doPunch = async function(type) {
 }
 
 // ===================== LOG COLLABORATORE =====================
-async function loadLog() {
-  const { query: q, collection: c, where: w, orderBy: o } = window._fbModules;
+async let _unsubLog = null;
+function loadLog() {
+  const { query: q, collection: c, where: w } = window._fbModules;
   const box = document.getElementById('logList');
   box.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
-  const snap = await getDocs(
-    q(c(db, 'punches'), w('userId', '==', currentUser.id))
+  if (_unsubLog) { _unsubLog(); _unsubLog = null; }
+  _unsubLog = onSnapshot(
+    q(c(db, 'punches'), w('userId', '==', currentUser.id)),
+    (snap) => {
+      const punches = [];
+      snap.forEach(d => punches.push({ id: d.id, ...d.data() }));
+      punches.sort((a, b) => (tsToMs(b.timestamp)||0) - (tsToMs(a.timestamp)||0));
+      if (!punches.length) { box.innerHTML = '<div class="empty">Nessun accesso registrato</div>'; return; }
+      const now = Date.now();
+      box.innerHTML = '<div style="padding:8px 20px;">' +
+        punches.slice(0, 100).map(p => {
+          const isIn = p.type === 'ingresso';
+          const canEdit = (now - (tsToMs(p.timestamp)||0)) < 30 * 60 * 1000;
+          const orig = p.originalTime ? '<div style="font-size:10px;color:var(--muted);margin-top:2px;">orig: ' + new Date(p.originalTime).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) + '</div>' : '';
+          return '<div class="log-item"><div class="log-icon ' + (isIn?'in':'out') + '">' + (isIn?'↗':'↙') + '</div><div class="log-text" style="flex:1;"><div class="log-type" style="color:' + (isIn?'var(--green)':'var(--amber)') + '">' + (isIn?'Entrata':'Uscita') + '</div><div class="log-date">' + fmtDateTime(p.timestamp) + '</div>' + orig + '</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;"><div class="log-time" style="color:' + (isIn?'var(--green)':'var(--amber)') + '">' + fmtTime(p.timestamp) + '</div>' + (canEdit ? '<button onclick="collaboratorCorrect('' + p.id + '','' + p.type + '')" style="font-size:10px;padding:3px 8px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.25);color:var(--blue);border-radius:6px;cursor:pointer;font-family:inherit;">✏️ Correggi</button>' : '') + '</div></div>';
+        }).join('') + '</div>';
+    },
+    (err) => { box.innerHTML = '<div class="error-msg" style="padding:12px;">❌ ' + err.message + '</div>'; }
   );
-  const punches = [];
-  snap.forEach(d => punches.push({ id: d.id, ...d.data() }));
-  punches.sort((a, b) => {
-    const ta = a.timestamp?.toDate?.() || new Date(0);
-    const tb = b.timestamp?.toDate?.() || new Date(0);
-    return tb - ta;
-  });
-  if (!punches.length) { box.innerHTML = '<div class="empty">Nessun accesso registrato</div>'; return; }
-  box.innerHTML = '<div style="padding:8px 20px;">' +
-    punches.slice(0, 100).map(p => `
-      <div class="log-item">
-        <div class="log-icon ${p.type === 'ingresso' ? 'in' : 'out'}">${p.type === 'ingresso' ? '↗' : '↙'}</div>
-        <div class="log-text">
-          <div class="log-type" style="color:${p.type === 'ingresso' ? 'var(--green)' : 'var(--amber)'}">
-            ${p.type === 'ingresso' ? 'Entrata' : 'Uscita'}
-          </div>
-          <div class="log-date">${fmtDateTime(p.timestamp)}</div>
-        </div>
-        <div class="log-time" style="color:${p.type === 'ingresso' ? 'var(--green)' : 'var(--amber)'}">
-          ${fmtTime(p.timestamp)}
-        </div>
-      </div>
-    `).join('') + '</div>';
 }
 
 // ===================== MENSILE COLLABORATORE =====================
@@ -1462,14 +1459,38 @@ window.loadCapoStats = async function() {
   } catch(e) { document.getElementById("capoStatsList").innerHTML = '<div class="error-msg" style="padding:20px;">❌ Errore: ' + e.message + '</div>'; }
 }
 
+// ===================== CORREZIONE COLLABORATORE =====================
+window.collaboratorCorrect = async function(punchId, type) {
+  const cur = new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
+  const newTime = prompt((type === 'ingresso' ? 'Correggi ENTRATA' : 'Correggi USCITA') + ' (HH:MM):', cur);
+  if (!newTime || !/^\d{2}:\d{2}$/.test(newTime)) { showToast('❌ Formato non valido. Usa HH:MM'); return; }
+  const [hh, mm] = newTime.split(':').map(Number);
+  if (hh > 23 || mm > 59) { showToast('❌ Orario non valido'); return; }
+  const today = todayStr();
+  const rawDate = new Date(today + 'T' + String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0') + ':00');
+  const rounded = roundTimestamp(rawDate, type);
+  const roundedStr = rounded.toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
+  if (!confirm((type === 'ingresso' ? 'Entrata' : 'Uscita') + ' corretta a: ' + roundedStr + '. Confermi?')) return;
+  try {
+    const { doc: d, Timestamp } = window._fbModules;
+    const { updateDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+    await updateDoc(d(db, 'punches', punchId), {
+      timestamp: Timestamp.fromDate(rounded),
+      originalTime: rawDate.toISOString(),
+      correctedBy: currentUser.name,
+      correctedAt: new Date().toISOString()
+    });
+    showToast('✅ Corretto a ' + roundedStr);
+  } catch(e) { showToast('❌ Errore: ' + e.message); }
+};
+
 // ===================== EXPORT CSV =====================
 window.exportCSV = function() {
   const data = window._lastReportData;
   if (!data) { showToast('❌ Carica prima il report'); return; }
   const { workers, byUser, month, daysInMonth } = data;
   let csv = '﻿'; // BOM per Excel italiano
-  csv += 'Collaboratore;Giorno;Entrata;Uscita;Ore
-';
+  csv += 'Collaboratore;Giorno;Entrata;Uscita;Ore\n';
   workers.forEach(u => {
     const days = byUser[u.id] || {};
     for (let day = 1; day <= daysInMonth; day++) {
@@ -1563,17 +1584,25 @@ window.openTimbModal = async function(uid, uname) {
 window.closeTimbModal = function() {
   document.getElementById('timbModal').style.display = 'none';
   _timbUserId = null;
+  if (typeof _unsubTimbList !== 'undefined' && _unsubTimbList) { _unsubTimbList(); _unsubTimbList = null; }
 };
 
 window.closeTimbModalOutside = function(e) {
   if (e.target.id === 'timbModal') closeTimbModal();
 };
 
+let _unsubTimbList = null;
 async function loadTimbList() {
-  const { query: q, collection: c, where: w, orderBy: o } = window._fbModules;
-  const snap = await getDocs(q(c(db, "punches"), w("userId", "==", _timbUserId), o("timestamp", "asc")));
-  const punches = [];
-  snap.forEach(doc => punches.push({ id: doc.id, ...doc.data() }));
+  const { query: q, collection: c, where: w } = window._fbModules;
+  if (_unsubTimbList) { _unsubTimbList(); _unsubTimbList = null; }
+  const container = document.getElementById("timbList");
+  container.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:12px;">⏳ Caricamento...</div>';
+  _unsubTimbList = onSnapshot(
+    q(c(db, "punches"), w("userId", "==", _timbUserId)),
+    (snap) => {
+      const punches = [];
+      snap.forEach(doc => punches.push({ id: doc.id, ...doc.data() }));
+      punches.sort((a,b) => (tsToMs(a.timestamp)||0) - (tsToMs(b.timestamp)||0));
 
   const container = document.getElementById("timbList");
   if (punches.length === 0) {
@@ -1634,6 +1663,9 @@ async function loadTimbList() {
   container.querySelectorAll(".btn-del-timb").forEach(btn => {
     btn.addEventListener("click", () => deleteTimb(btn.dataset.pid));
   });
+    },
+    (err) => { document.getElementById("timbList").innerHTML = '<div style="color:var(--red);padding:12px;">❌ ' + err.message + '</div>'; }
+  );
 }
 
 window.addManualTimb = async function() {
