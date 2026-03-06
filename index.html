@@ -1132,7 +1132,7 @@ window.doPunch = async function(type) {
 }
 
 // ===================== LOG COLLABORATORE =====================
-async let _unsubLog = null;
+let _unsubLog = null;
 function loadLog() {
   const { query: q, collection: c, where: w } = window._fbModules;
   const box = document.getElementById('logList');
