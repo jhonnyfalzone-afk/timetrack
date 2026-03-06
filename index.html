@@ -421,7 +421,7 @@
     position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
     background: #1a1a1a; border: 1px solid var(--border);
     border-radius: 100px; padding: 12px 24px;
-    font-size: 14px; font-weight: 600; z-index: 200;
+    font-size: 14px; font-weight: 600; z-index: 600;
     opacity: 0; transition: opacity 0.3s; pointer-events: none;
     white-space: nowrap;
   }
@@ -487,6 +487,7 @@
     </div>
     <button class="btn-primary" onclick="doLogin()">Entra →</button>
     <div class="error-msg" id="loginError"></div>
+    <button onclick="reloadUsers()" style="width:100%;margin-top:10px;padding:11px;background:none;border:1px solid rgba(255,255,255,0.1);color:var(--muted);border-radius:12px;font-family:inherit;font-size:13px;cursor:pointer;">🔄 Non vedi il tuo nome? Ricarica</button>
   </div>
 </div>
 
@@ -529,6 +530,9 @@
         <div class="punch-btns">
           <button class="btn-punch entrata" id="btnEntrata" onclick="doPunch('ingresso')">↗ ENTRATA</button>
           <button class="btn-punch uscita" id="btnUscita" onclick="doPunch('uscita')">↙ USCITA</button>
+        </div>
+        <div style="margin-top:14px;padding:10px 14px;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.15);border-radius:10px;font-size:12px;color:var(--muted);text-align:center;line-height:1.6;">
+          ⏱ Orari arrotondati a <strong style="color:var(--blue);">scaglioni di 15 minuti</strong><br>Entrata → successivo &nbsp;·&nbsp; Uscita → precedente
         </div>
       </div>
 
@@ -692,18 +696,10 @@
             </div>
             <div class="field" style="margin-bottom:0">
               <label>PIN (4 cifre)</label>
-              <input type="text" id="newUserPin" maxlength="4" inputmode="numeric" placeholder="1234">
+              <input type="text" id="newUserPin" maxlength="4" minlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="1234">
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-            <div class="field" style="margin-bottom:0">
-              <label>Ruolo</label>
-              <select id="newUserRole">
-                <option value="collaboratore">Collaboratore</option>
-                <option value="capo">Capo</option>
-              </select>
-            </div>
-          </div>
+          <input type="hidden" id="newUserRole" value="collaboratore">
           <button class="btn-add" style="width:100%;margin-top:4px;" onclick="addUser()">Aggiungi →</button>
         </div>
 
@@ -731,6 +727,51 @@
   </div>
 </div>
 
+<!-- Modal Timbrature Admin -->
+<div class="photo-modal" id="timbModal" style="display:none;" onclick="closeTimbModalOutside(event)">
+  <div class="photo-modal-box" style="max-width:500px;width:100%;max-height:85vh;overflow-y:auto;">
+    <div class="photo-modal-title">📋 Timbrature</div>
+    <div class="photo-modal-sub" id="timbModalName">Collaboratore</div>
+    <div id="timbList" style="margin:12px 0;"></div>
+    <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:14px;margin-top:8px;">
+      <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px;">➕ Aggiungi timbratura</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <select id="timbType" style="background:var(--card);border:1px solid rgba(255,255,255,0.1);color:var(--text);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;">
+          <option value="ingresso">↗ Entrata</option>
+          <option value="uscita">↙ Uscita</option>
+        </select>
+        <input type="date" id="timbDate" style="background:var(--card);border:1px solid rgba(255,255,255,0.1);color:var(--text);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;">
+        <input type="time" id="timbTime" style="background:var(--card);border:1px solid rgba(255,255,255,0.1);color:var(--text);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;">
+        <button onclick="addManualTimb()" style="background:var(--blue);color:#000;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;">Aggiungi</button>
+      </div>
+    </div>
+    <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:14px;margin-top:14px;">
+      <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px;">📅 Aggiungi giornata completa</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Data</div>
+          <input type="date" id="timbDayDate" style="width:100%;background:var(--card);border:1px solid rgba(255,255,255,0.1);color:var(--text);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div style="display:flex;gap:6px;align-items:flex-end;">
+          <div style="flex:1;">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Entrata</div>
+            <input type="time" id="timbDayIn" value="08:00" style="width:100%;background:var(--card);border:1px solid rgba(255,255,255,0.1);color:var(--text);border-radius:8px;padding:8px 6px;font-family:inherit;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Uscita</div>
+            <input type="time" id="timbDayOut" value="17:00" style="width:100%;background:var(--card);border:1px solid rgba(255,255,255,0.1);color:var(--text);border-radius:8px;padding:8px 6px;font-family:inherit;font-size:13px;box-sizing:border-box;">
+          </div>
+        </div>
+      </div>
+      <button onclick="addFullDay()" style="width:100%;background:rgba(34,197,94,0.2);color:var(--green);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:10px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;">📅 Aggiungi giornata completa</button>
+    </div>
+    <div class="photo-modal-btns" style="margin-top:16px;">
+      <button class="btn-cancel" onclick="closeTimbModal()">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<div class="photo-modal" id="reportDayModal" style="display:none;" onclick="if(event.target.id==='reportDayModal')closeReportDayModal()"><div class="photo-modal-box" style="max-width:400px;width:100%;"><div class="photo-modal-title">Modifica giorno</div><div class="photo-modal-sub" id="reportDayModalTitle">-</div><div style="display:flex;flex-direction:column;gap:14px;margin-top:16px;"><div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;">Entrata</label><input type="time" id="reportDayIn" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text);border-radius:8px;padding:10px;font-family:inherit;font-size:15px;box-sizing:border-box;"></div><div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;">Uscita</label><input type="time" id="reportDayOut" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text);border-radius:8px;padding:10px;font-family:inherit;font-size:15px;box-sizing:border-box;"><div style="font-size:11px;color:var(--muted);margin-top:4px;">Lascia vuoto se ancora al lavoro</div></div></div><div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.15);border-radius:8px;padding:10px;margin-top:14px;font-size:12px;color:var(--red);">Salva sostituira tutte le timbrature di questo giorno.</div><div class="photo-modal-btns" style="margin-top:16px;"><button class="btn-cancel" onclick="closeReportDayModal()">Annulla</button><button class="btn-save-photo" style="opacity:1;" onclick="saveReportDay()">Salva</button></div></div></div>
 <!-- Firebase SDK -->
 <script type="module">
 // Firebase config incorporata
@@ -797,17 +838,29 @@ async function checkFirstRun() {
 
 // ===================== LOGIN =====================
 async function showSplash() {
-  const snap = await getDocs(collection(db, 'users'));
-  const sel = document.getElementById('loginUser');
-  sel.innerHTML = '<option value="">— Seleziona —</option>';
-  snap.forEach(d => {
-    const opt = document.createElement('option');
-    opt.value = d.id;
-    opt.textContent = d.data().name + (d.data().role === 'capo' ? ' 👑' : '');
-    sel.appendChild(opt);
-  });
   document.getElementById('splash').style.display = 'flex';
+  document.getElementById('loginError').textContent = '';
+  const sel = document.getElementById('loginUser');
+  sel.innerHTML = '<option value="">⏳ Caricamento...</option>';
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    sel.innerHTML = '<option value="">— Seleziona —</option>';
+    if (snap.empty) {
+      document.getElementById('loginError').textContent = '⚠️ Nessun utente trovato nel database.';
+      return;
+    }
+    snap.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.data().name + (d.data().role === 'capo' ? ' 👑' : '');
+      sel.appendChild(opt);
+    });
+  } catch(e) {
+    sel.innerHTML = '<option value="">— Errore caricamento —</option>';
+    document.getElementById('loginError').textContent = '❌ Errore connessione: ' + e.message;
+  }
 }
+window.reloadUsers = async function() { await showSplash(); }
 
 window.doLogin = async function() {
   const uid = document.getElementById('loginUser').value;
@@ -867,35 +920,54 @@ function startApp() {
 // ===================== UTILS =====================
 function todayStr() { return new Date().toISOString().split('T')[0]; }
 function fmtTime(ts) {
-  if (!ts) return '—';
-  const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const ms = tsToMs(ts);
+  if (ms === null) return '—';
+  return new Date(ms).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 }
 function fmtDateTime(ts) {
-  if (!ts) return '—';
-  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  const ms = tsToMs(ts);
+  if (ms === null) return '—';
+  const d = new Date(ms);
   return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) + ' ' +
     d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 }
 function msToDuration(ms) {
-  if (ms <= 0) return '0h 00m';
+  if (!ms || ms <= 0) return '0h 00m';
   const h = Math.floor(ms / 3600000);
   const m = Math.floor((ms % 3600000) / 60000);
   return h + 'h ' + String(m).padStart(2, '0') + 'm';
 }
-function calcTotalMs(punches) {
-  let total = 0, lastIn = null;
-  const sorted = [...punches].sort((a, b) => {
-    const ta = a.timestamp?.toDate?.() || new Date(a.timestamp);
-    const tb = b.timestamp?.toDate?.() || new Date(b.timestamp);
-    return ta - tb;
-  });
-  for (const p of sorted) {
-    const t = p.timestamp?.toDate?.() ? p.timestamp.toDate().getTime() : new Date(p.timestamp).getTime();
-    if (p.type === 'ingresso') lastIn = t;
-    else if (p.type === 'uscita' && lastIn) { total += t - lastIn; lastIn = null; }
+// ===== TIMESTAMP UTILITY =====
+function tsToMs(ts) {
+  if (!ts) return null;
+  if (typeof ts.toDate === 'function') {
+    try { return ts.toDate().getTime(); } catch(e) { return null; }
   }
-  if (lastIn) total += Date.now() - lastIn;
+  if (ts.seconds) return ts.seconds * 1000 + Math.floor((ts.nanoseconds || 0) / 1e6);
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? null : d.getTime();
+}
+
+// ===== ARROTONDAMENTO 15 MINUTI =====
+// ENTRATA → quarto d'ora SUCCESSIVO  (07:52 → 08:00)
+// USCITA  → quarto d'ora PRECEDENTE  (17:08 → 17:00)
+function roundTimestamp(date, type) {
+  const ms = 15 * 60 * 1000;
+  if (type === 'ingresso') return new Date(Math.ceil(date.getTime() / ms) * ms);
+  else return new Date(Math.floor(date.getTime() / ms) * ms);
+}
+
+function calcTotalMs(punches, includeOpen = false) {
+  let total = 0, lastIn = null;
+  const valid = punches.filter(p => tsToMs(p.timestamp) !== null);
+  const sorted = [...valid].sort((a, b) => tsToMs(a.timestamp) - tsToMs(b.timestamp));
+  for (const p of sorted) {
+    const t = tsToMs(p.timestamp);
+    if (p.type === 'ingresso') lastIn = t;
+    else if (p.type === 'uscita' && lastIn !== null) { total += t - lastIn; lastIn = null; }
+  }
+  // includeOpen=true solo per il timer live, non per report storici
+  if (lastIn !== null && includeOpen) total += Date.now() - lastIn;
   return total;
 }
 
@@ -903,7 +975,7 @@ window.showToast = function(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2800);
+  setTimeout(() => t.classList.remove('show'), msg.length > 40 ? 4000 : 2800);
 }
 
 // ===================== TABS =====================
@@ -959,27 +1031,28 @@ window.showCapoTab = function(name, btn) {
 
 // ===================== COLLABORATORE: STATO OGGI =====================
 async function loadTodayStatus() {
-  const { query: q, collection: c, where: w, orderBy: o } = window._fbModules;
+  const { query: q, collection: c, where: w } = window._fbModules;
   const today = todayStr();
-  const snap = await getDocs(
-    q(c(db, 'punches'), w('userId', '==', currentUser.id), w('date', '==', today))
-  );
-  const punches = [];
-  snap.forEach(d => punches.push(d.data()));
-  punches.sort((a, b) => {
-    const ta = a.timestamp?.toDate?.() || new Date(a.timestamp);
-    const tb = b.timestamp?.toDate?.() || new Date(b.timestamp);
-    return ta - tb;
-  });
-  updatePunchUI(punches);
+  try {
+    const snap = await getDocs(q(c(db, 'punches'), w('userId', '==', currentUser.id), w('date', '==', today)));
+    const punches = [];
+    snap.forEach(d => punches.push(d.data()));
+    updatePunchUI(punches);
+  } catch(e) {
+    showToast('⚠️ Errore caricamento stato: ' + e.message);
+  }
 }
 
 function updatePunchUI(punches) {
-  const lastIn = [...punches].reverse().find(p => p.type === 'ingresso');
-  const lastOut = [...punches].reverse().find(p => p.type === 'uscita');
-  const isPresente = lastIn && (!lastOut || lastIn.timestamp?.toDate?.().getTime() > lastOut.timestamp?.toDate?.().getTime() || lastIn.ts > lastOut.ts);
+  const valid = punches.filter(p => tsToMs(p.timestamp) !== null);
+  const sorted = [...valid].sort((a, b) => tsToMs(a.timestamp) - tsToMs(b.timestamp));
+  const lastIn = [...sorted].reverse().find(p => p.type === 'ingresso');
+  const lastOut = [...sorted].reverse().find(p => p.type === 'uscita');
+  const lastInMs = lastIn ? tsToMs(lastIn.timestamp) : null;
+  const lastOutMs = lastOut ? tsToMs(lastOut.timestamp) : null;
+  const isPresente = lastIn && (lastOutMs === null || lastInMs > lastOutMs);
   window._isPresente = isPresente;
-  window._punchesToday = punches;
+  window._punchesToday = valid; // calcTotalMs con includeOpen=true per il timer live
 
   document.getElementById('pcEntrata').textContent = fmtTime(lastIn?.timestamp);
   document.getElementById('pcUscita').textContent = fmtTime(lastOut?.timestamp);
@@ -1010,7 +1083,7 @@ function updatePunchUI(punches) {
 function startLiveTimer() {
   timerInterval = setInterval(() => {
     if (window._isPresente && window._punchesToday) {
-      const ms = calcTotalMs(window._punchesToday);
+      const ms = calcTotalMs(window._punchesToday, true);
       document.getElementById('liveTimerVal').textContent = msToDuration(ms);
     }
   }, 10000);
@@ -1018,25 +1091,40 @@ function startLiveTimer() {
 
 // ===================== PUNCH =====================
 window.doPunch = async function(type) {
-  const { addDoc, collection: c, serverTimestamp: sts } = window._fbModules;
+  const { addDoc, collection: c } = window._fbModules;
   const today = todayStr();
   const btn = type === 'ingresso' ? document.getElementById('btnEntrata') : document.getElementById('btnUscita');
   btn.disabled = true;
   btn.textContent = '...';
   try {
+    const now = new Date();
+    const rounded = roundTimestamp(now, type);
+    const { Timestamp } = window._fbModules;
+    const ts = Timestamp.fromDate(rounded);
+    const originalTime = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const roundedTime = rounded.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const wasRounded = originalTime !== roundedTime;
     await addDoc(c(db, 'punches'), {
       userId: currentUser.id,
       userName: currentUser.name,
       type,
       date: today,
-      timestamp: sts()
+      timestamp: ts,
+      originalTime: now.toISOString()
     });
-    showToast(type === 'ingresso' ? '✅ Entrata registrata!' : '✅ Uscita registrata!');
+    if (wasRounded) {
+      showToast(type === 'ingresso'
+        ? '✅ Entrata: ' + roundedTime + ' (timbrata alle ' + originalTime + ')'
+        : '✅ Uscita: ' + roundedTime + ' (timbrata alle ' + originalTime + ')');
+    } else {
+      showToast(type === 'ingresso' ? '✅ Entrata registrata: ' + roundedTime : '✅ Uscita registrata: ' + roundedTime);
+    }
     await loadTodayStatus();
   } catch(e) {
     showToast('❌ Errore: ' + e.message);
   }
   btn.textContent = type === 'ingresso' ? '↗ ENTRATA' : '↙ USCITA';
+  btn.disabled = false;
 }
 
 // ===================== LOG COLLABORATORE =====================
@@ -1056,7 +1144,7 @@ async function loadLog() {
   });
   if (!punches.length) { box.innerHTML = '<div class="empty">Nessun accesso registrato</div>'; return; }
   box.innerHTML = '<div style="padding:8px 20px;">' +
-    punches.slice(0, 50).map(p => `
+    punches.slice(0, 100).map(p => `
       <div class="log-item">
         <div class="log-icon ${p.type === 'ingresso' ? 'in' : 'out'}">${p.type === 'ingresso' ? '↗' : '↙'}</div>
         <div class="log-text">
@@ -1097,7 +1185,7 @@ window.loadMensile = async function() {
   const { query: q, collection: c, where: w } = window._fbModules;
   const [y, m] = month.split('-');
   const snap = await getDocs(
-    q(c(db, 'punches'), w('userId', '==', currentUser.id), w('date', '>=', month + '-01'), w('date', '<=', month + '-31'))
+    q(c(db, 'punches'), w('userId', '==', currentUser.id), w('date', '>=', month + '-01'), w('date', '<=', month + '-' + String(new Date(parseInt(y), parseInt(m), 0).getDate()).padStart(2,'0')))
   );
   const byDay = {};
   snap.forEach(d => {
@@ -1166,17 +1254,18 @@ function loadCapoLive() {
 
 function getStatusFromPunches(punches) {
   if (!punches || !punches.length) return 'assente';
-  const sorted = [...punches].sort((a, b) => {
-    const ta = a.timestamp?.toDate?.() || new Date(0);
-    const tb = b.timestamp?.toDate?.() || new Date(0);
-    return ta - tb;
-  });
+  const valid = punches.filter(p => tsToMs(p.timestamp) !== null);
+  if (!valid.length) return 'assente';
+  const sorted = [...valid].sort((a, b) => tsToMs(a.timestamp) - tsToMs(b.timestamp));
   return sorted[sorted.length - 1].type === 'ingresso' ? 'presente' : 'uscito';
 }
 
 function renderLive(allUsers, byUser) {
   let presenti = 0, usciti = 0, assenti = 0;
-  const html = allUsers.map(u => {
+  const container = document.getElementById('capoLiveList');
+  container.innerHTML = '';
+
+  allUsers.forEach(u => {
     const data = byUser[u.id] || null;
     const status = data ? getStatusFromPunches(data.punches) : 'assente';
     if (status === 'presente') presenti++;
@@ -1185,7 +1274,10 @@ function renderLive(allUsers, byUser) {
     const ms = data ? calcTotalMs(data.punches) : 0;
     const lastIn = data ? [...data.punches].reverse().find(p => p.type === 'ingresso') : null;
     const color = u.color || '#6366f1';
-    return `<div class="emp-row">
+
+    const row = document.createElement('div');
+    row.className = 'emp-row';
+    row.innerHTML = `
       <div class="emp-left">
         <div class="emp-avatar" style="background:${color}20;color:${color};">${u.name[0]}</div>
         <div>
@@ -1193,13 +1285,40 @@ function renderLive(allUsers, byUser) {
           <div class="emp-sub">${data ? 'Entrata: ' + fmtTime(lastIn?.timestamp) : 'Nessuna timbratura'}</div>
         </div>
       </div>
-      <div style="text-align:right">
-        <div class="badge ${status}">${status === 'presente' ? '● Presente' : status === 'uscito' ? '◐ Uscito' : '○ Assente'}</div>
-        ${ms > 0 ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">${msToDuration(ms)}</div>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-  document.getElementById('capoLiveList').innerHTML = html || '<div class="empty">Nessun collaboratore</div>';
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${status === 'uscito' ? `<button class="btn-ripristina" data-uid="${u.id}" data-uname="${u.name}" style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:var(--green);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:11px;font-weight:700;">↩ Ripristina</button>` : ''}
+        <div style="text-align:right;">
+          <div class="badge ${status}">${status === 'presente' ? '● Presente' : status === 'uscito' ? '◐ Uscito' : '○ Assente'}</div>
+          ${ms > 0 ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">${msToDuration(ms)}</div>` : ''}
+        </div>
+      </div>`;
+    container.appendChild(row);
+  });
+
+  if (!allUsers.length) container.innerHTML = '<div class="empty">Nessun collaboratore</div>';
+
+  container.querySelectorAll('.btn-ripristina').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const uid = btn.dataset.uid;
+      const uname = btn.dataset.uname;
+      if (!confirm('Eliminare l\'ultima uscita di ' + uname + ' e segnarlo come Presente?')) return;
+      const { query: q, collection: c, where: w } = window._fbModules;
+      const { deleteDoc, doc: d } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+      const today = todayStr();
+      const snap = await getDocs(q(c(db, 'punches'), w('userId', '==', uid), w('date', '==', today)));
+      const punches = [];
+      snap.forEach(doc => punches.push({ id: doc.id, ...doc.data() }));
+      const sorted = punches.sort((a, b) => (tsToMs(b.timestamp)||0) - (tsToMs(a.timestamp)||0));
+      const lastUscita = sorted.find(p => p.type === 'uscita');
+      if (lastUscita) {
+        await deleteDoc(d(db, 'punches', lastUscita.id));
+        showToast('✅ ' + uname + ' è di nuovo Presente!');
+      } else {
+        showToast('❌ Nessuna uscita trovata oggi');
+      }
+    });
+  });
+
   document.getElementById('liveCount').textContent = presenti + ' presenti';
   document.getElementById('capoPresenteOra').textContent = presenti;
   document.getElementById('capoUsciti').textContent = usciti;
@@ -1209,15 +1328,24 @@ function renderLive(allUsers, byUser) {
 
 // ===================== CAPO: STATS MENSILI =====================
 window.loadCapoStats = async function() {
-  const month = document.getElementById('capoMonthSel')?.value;
+  const month = document.getElementById("capoMonthSel")?.value;
   if (!month) return;
+  document.getElementById("capoStatsList").innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
+  try {
   const { query: q, collection: c, where: w } = window._fbModules;
-  const usersSnap = await getDocs(c(db, 'users'));
+  const usersSnap = await getDocs(c(db, "users"));
   const workers = [];
-  usersSnap.forEach(d => { if (d.data().role !== 'capo') workers.push({ id: d.id, ...d.data() }); });
+  // FIX: esclude i capi dal report
+  usersSnap.forEach(d => { const u = { id: d.id, ...d.data() }; if (u.role !== 'capo') workers.push(u); });
+
+  const year = parseInt(month.split("-")[0]);
+  const mon = parseInt(month.split("-")[1]);
+  const daysInMonth = new Date(year, mon, 0).getDate();
+  // FIX: usa il vero ultimo giorno del mese
+  const lastDay = String(daysInMonth).padStart(2, "0");
 
   const punchSnap = await getDocs(
-    q(c(db, 'punches'), w('date', '>=', month + '-01'), w('date', '<=', month + '-31'))
+    q(c(db, "punches"), w("date", ">=", month + "-01"), w("date", "<=", month + "-" + lastDay))
   );
   const byUser = {};
   punchSnap.forEach(d => {
@@ -1227,28 +1355,147 @@ window.loadCapoStats = async function() {
     byUser[p.userId][p.date].push(p);
   });
 
+  if (!workers.length) { document.getElementById('capoStatsList').innerHTML = '<div class="empty" style="padding:30px;text-align:center;">👥 Nessun collaboratore nel team</div>'; return; }
   const html = workers.map(u => {
     const days = byUser[u.id] || {};
-    const dayKeys = Object.keys(days);
+    const dayKeys = Object.keys(days).sort();
     let totalMs = 0;
-    dayKeys.forEach(d => { totalMs += calcTotalMs(days[d]); });
-    const color = u.color || '#6366f1';
-    return `<div class="emp-row">
-      <div class="emp-left">
-        <div class="emp-avatar" style="background:${color}20;color:${color};">${u.name[0]}</div>
-        <div>
-          <div class="emp-name">${u.name}</div>
-          <div class="emp-sub">${dayKeys.length} giorni presenti</div>
+    dayKeys.forEach(dk => { totalMs += calcTotalMs(days[dk]); });
+    const color = u.color || "#6366f1";
+    const totalHours = msToDuration(totalMs);
+    const validDays = dayKeys.filter(dk => days[dk].some(p => tsToMs(p.timestamp) !== null));
+
+    let tableRows = "";
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = month + "-" + String(day).padStart(2, "0");
+      const d = new Date(dateStr + "T12:00:00");
+      const weekday = d.toLocaleDateString("it-IT", { weekday: "short" });
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      const punches = days[dateStr] || [];
+
+      let entrata = "-", uscita = "-", ore = "-";
+      if (punches.length > 0) {
+        const validP = punches.filter(p => tsToMs(p.timestamp) !== null);
+        const sorted = [...validP].sort((a, b) => tsToMs(a.timestamp) - tsToMs(b.timestamp));
+        const firstIn = sorted.find(p => p.type === "ingresso");
+        const lastOut = [...sorted].reverse().find(p => p.type === "uscita");
+        if (firstIn) entrata = new Date(tsToMs(firstIn.timestamp)).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+        if (lastOut) uscita = new Date(tsToMs(lastOut.timestamp)).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+        const ms = calcTotalMs(validP);
+        if (ms > 0) ore = msToDuration(ms);
+      }
+
+      const rowBg = isWeekend ? "rgba(255,255,255,0.02)" : punches.length > 0 ? "rgba(34,197,94,0.05)" : "transparent";
+      const dayColor = isWeekend ? "var(--muted)" : "var(--text)";
+      const clickStyle = !isWeekend ? 'cursor:pointer;' : '';
+      const hoverAttr = !isWeekend ? `onmouseover="this.style.background='rgba(56,189,248,0.08)'" onmouseout="this.style.background='${rowBg}'"` : '';
+      const clickAttr = !isWeekend ? `onclick="openReportDayEdit('${u.id}','${u.name}','${dateStr}')"` : '';
+      tableRows += `<tr style="background:${rowBg};${clickStyle}" ${hoverAttr} ${clickAttr}>
+        <td style="padding:5px 8px;font-size:12px;color:${dayColor};border-bottom:1px solid rgba(255,255,255,0.04);">${String(day).padStart(2,"0")} <span style="color:var(--muted);font-size:11px;">${weekday}</span>${!isWeekend ? ' <span style="font-size:10px;color:rgba(56,189,248,0.6);">✏️</span>' : ''}</td>
+        <td style="padding:5px 8px;font-size:12px;color:var(--green);text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);">${entrata}</td>
+        <td style="padding:5px 8px;font-size:12px;color:var(--amber);text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);">${uscita}</td>
+        <td style="padding:5px 8px;font-size:12px;color:var(--blue);text-align:center;font-weight:700;border-bottom:1px solid rgba(255,255,255,0.04);">${ore}</td>
+      </tr>`;
+    }
+
+    return `<div style="margin-bottom:24px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(255,255,255,0.05);border-radius:12px 12px 0 0;border-bottom:1px solid rgba(255,255,255,0.08);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:${color}20;color:${color};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;">${u.name[0]}</div>
+          <div>
+            <div style="font-weight:700;font-size:15px;">${u.name}</div>
+            <div style="font-size:12px;color:var(--muted);">${validDays.length} giorni lavorati</div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--blue);">${totalHours}</div>
+          <div style="font-size:11px;color:var(--muted);">ore totali mese</div>
         </div>
       </div>
-      <div style="text-align:right">
-        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:var(--blue)">${msToDuration(totalMs)}</div>
-        <div style="font-size:11px;color:var(--muted);">ore totali</div>
+      <div style="border-radius:0 0 12px 12px;overflow:hidden;background:rgba(255,255,255,0.02);">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="background:rgba(255,255,255,0.05);">
+              <th style="padding:6px 8px;font-size:11px;color:var(--muted);text-align:left;font-weight:600;">GIORNO</th>
+              <th style="padding:6px 8px;font-size:11px;color:var(--green);text-align:center;font-weight:600;">ENTRATA</th>
+              <th style="padding:6px 8px;font-size:11px;color:var(--amber);text-align:center;font-weight:600;">USCITA</th>
+              <th style="padding:6px 8px;font-size:11px;color:var(--blue);text-align:center;font-weight:600;">ORE</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
       </div>
     </div>`;
-  }).join('');
-  document.getElementById('capoStatsList').innerHTML = html || '<div class="empty">Nessun dato</div>';
+  }).join("");
+  // Riepilogo totale team
+  let teamTotalMs = 0;
+  let teamTotalDays = 0;
+  workers.forEach(u => {
+    const days = byUser[u.id] || {};
+    const dayKeys = Object.keys(days);
+    dayKeys.forEach(dk => { teamTotalMs += calcTotalMs(days[dk]); });
+    teamTotalDays += dayKeys.filter(dk => days[dk].some(p => tsToMs(p.timestamp) !== null)).length;
+  });
+  const teamSummary = workers.length > 0 ? `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
+      <div style="background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.2);border-radius:12px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Collaboratori</div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--blue);">${workers.length}</div>
+      </div>
+      <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:12px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Giorni totali</div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--green);">${teamTotalDays}</div>
+      </div>
+      <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:12px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Ore totali</div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--amber);">${msToDuration(teamTotalMs)}</div>
+      </div>
+    </div>` : '';
+
+  // Pulsante Export CSV
+  const exportBtn = `<button onclick="exportCSV()" style="width:100%;padding:12px;margin-bottom:16px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);color:var(--green);border-radius:12px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;cursor:pointer;">📥 Esporta CSV per stipendi</button>`;
+
+  document.getElementById("capoStatsList").innerHTML = (html ? teamSummary + exportBtn + html : '<div class="empty">Nessun dato questo mese</div>');
+  // Salva dati per export
+  window._lastReportData = { workers, byUser, month, daysInMonth };
+  } catch(e) { document.getElementById("capoStatsList").innerHTML = '<div class="error-msg" style="padding:20px;">❌ Errore: ' + e.message + '</div>'; }
 }
+
+// ===================== EXPORT CSV =====================
+window.exportCSV = function() {
+  const data = window._lastReportData;
+  if (!data) { showToast('❌ Carica prima il report'); return; }
+  const { workers, byUser, month, daysInMonth } = data;
+  let csv = '﻿'; // BOM per Excel italiano
+  csv += 'Collaboratore;Giorno;Entrata;Uscita;Ore
+';
+  workers.forEach(u => {
+    const days = byUser[u.id] || {};
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = month + '-' + String(day).padStart(2, '0');
+      const punches = days[dateStr] || [];
+      if (!punches.length) return;
+      const validP = punches.filter(p => tsToMs(p.timestamp) !== null);
+      const sorted = [...validP].sort((a,b) => tsToMs(a.timestamp) - tsToMs(b.timestamp));
+      const firstIn = sorted.find(p => p.type === 'ingresso');
+      const lastOut = [...sorted].reverse().find(p => p.type === 'uscita');
+      const ms = calcTotalMs(validP);
+      const entrata = firstIn ? new Date(tsToMs(firstIn.timestamp)).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) : '-';
+      const uscita = lastOut ? new Date(tsToMs(lastOut.timestamp)).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) : '-';
+      const ore = ms > 0 ? msToDuration(ms).replace('h ',':').replace('m','') : '-';
+      const d = new Date(dateStr + 'T12:00:00');
+      const giorno = d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});
+      csv += `${u.name};${giorno};${entrata};${uscita};${ore}
+`;
+    }
+  });
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'presenze_' + month + '.csv';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('📥 CSV scaricato!');
+};
 
 // ===================== TEAM MANAGEMENT =====================
 async function loadTeam() {
@@ -1259,15 +1506,21 @@ async function loadTeam() {
   const colors = ['#f43f5e','#f97316','#22c55e','#06b6d4','#6366f1','#a855f7'];
   const html = users.map((u, i) => {
     const color = u.color || colors[i % colors.length];
+    const isCapo = u.role === 'capo';
+    const isMe = u.id === currentUser.id;
     return `<div class="emp-row">
       <div class="emp-left">
         <div class="emp-avatar" style="background:${color}20;color:${color};">${u.name[0]}</div>
         <div>
           <div class="emp-name">${u.name}</div>
-          <div class="emp-sub">${u.role === 'capo' ? '👑 Capo' : '👤 Collaboratore'} · PIN: ${'•'.repeat(u.pin.length)}</div>
+          <div class="emp-sub">${isCapo ? '👑 Capo' : '👤 Collaboratore'} · PIN: ${'•'.repeat(u.pin.length)}</div>
         </div>
       </div>
-      ${u.id !== currentUser.id ? `<button onclick="removeUser('${u.id}')" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.2);color:var(--red);border-radius:8px;padding:6px 12px;cursor:pointer;font-family:inherit;font-size:12px;">Rimuovi</button>` : '<div style="font-size:12px;color:var(--muted);">Tu</div>'}
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+        ${!isMe ? `<button onclick="toggleRole('${u.id}','${u.role}')" style="background:${isCapo ? 'rgba(234,179,8,0.12)' : 'rgba(99,102,241,0.12)'};border:1px solid ${isCapo ? 'rgba(234,179,8,0.3)' : 'rgba(99,102,241,0.3)'};color:${isCapo ? 'var(--amber)' : '#a5b4fc'};border-radius:8px;padding:5px 9px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;">${isCapo ? '→ Collab.' : '→ Capo'}</button>` : ''}
+        ${!isCapo ? `<button onclick="openTimbModal('${u.id}','${u.name}')" style="background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.2);color:var(--blue);border-radius:8px;padding:6px 10px;cursor:pointer;font-family:inherit;font-size:12px;">📋</button>` : ''}
+        ${!isMe ? `<button onclick="removeUser('${u.id}')" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.2);color:var(--red);border-radius:8px;padding:6px 10px;cursor:pointer;font-family:inherit;font-size:12px;">🗑</button>` : '<div style="font-size:12px;color:var(--muted);">Tu</div>'}
+      </div>
     </div>`;
   }).join('');
   document.getElementById('teamList').innerHTML = html || '<div class="empty">Nessun membro</div>';
@@ -1277,7 +1530,8 @@ window.addUser = async function() {
   const name = document.getElementById('newUserName').value.trim();
   const pin = document.getElementById('newUserPin').value.trim();
   const role = document.getElementById('newUserRole').value;
-  if (!name || pin.length < 4) { showToast('❌ Nome e PIN di 4 cifre richiesti'); return; }
+  if (!name || name.length > 30) { showToast('❌ Nome richiesto (max 30 caratteri)'); return; }
+  if (!/^\d{4}$/.test(pin)) { showToast('❌ PIN deve essere esattamente 4 cifre numeriche'); return; }
   const { doc: d, setDoc: sd, serverTimestamp: sts, collection: c } = window._fbModules;
   const colors = ['#f43f5e','#f97316','#22c55e','#06b6d4','#6366f1','#a855f7','#ec4899'];
   const snap = await getDocs(c(db, 'users'));
@@ -1289,6 +1543,239 @@ window.addUser = async function() {
   document.getElementById('newUserPin').value = '';
   loadTeam();
 }
+
+
+// ===================== ADMIN: GESTIONE TIMBRATURE =====================
+let _timbUserId = null;
+let _timbUserName = null;
+
+window.openTimbModal = async function(uid, uname) {
+  _timbUserId = uid;
+  _timbUserName = uname;
+  document.getElementById('timbModalName').textContent = uname;
+  document.getElementById('timbDate').value = todayStr();
+  document.getElementById('timbTime').value = '09:00';
+  document.getElementById('timbModal').style.display = 'flex';
+  await loadTimbList();
+};
+
+window.closeTimbModal = function() {
+  document.getElementById('timbModal').style.display = 'none';
+  _timbUserId = null;
+};
+
+window.closeTimbModalOutside = function(e) {
+  if (e.target.id === 'timbModal') closeTimbModal();
+};
+
+async function loadTimbList() {
+  const { query: q, collection: c, where: w, orderBy: o } = window._fbModules;
+  const snap = await getDocs(q(c(db, "punches"), w("userId", "==", _timbUserId), o("timestamp", "asc")));
+  const punches = [];
+  snap.forEach(doc => punches.push({ id: doc.id, ...doc.data() }));
+
+  const container = document.getElementById("timbList");
+  if (punches.length === 0) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:12px;">Nessuna timbratura</div>';
+    return;
+  }
+
+  // Store punches globally for button access
+  window._timbData = {};
+  punches.forEach(p => { window._timbData[p.id] = p; });
+
+  // Group by date
+  const byDay = {};
+  punches.forEach(p => {
+    const date = p.date || p.timestamp?.toDate?.().toISOString().slice(0,10) || "?";
+    if (!byDay[date]) byDay[date] = [];
+    byDay[date].push(p);
+  });
+
+  container.innerHTML = "";
+  const days = Object.keys(byDay).sort().reverse();
+  days.forEach(date => {
+    const d = new Date(date + "T12:00:00");
+    const label = d.toLocaleDateString("it-IT", {weekday:"long", day:"2-digit", month:"long"});
+    const dayDiv = document.createElement("div");
+    dayDiv.style.cssText = "font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin:12px 0 6px;";
+    dayDiv.textContent = label;
+    container.appendChild(dayDiv);
+
+    byDay[date].forEach(p => {
+      const tsMs = tsToMs(p.timestamp);
+      const timeStr = tsMs ? new Date(tsMs).toLocaleTimeString("it-IT", {hour:"2-digit", minute:"2-digit"}) : "--:--";
+      const isIn = p.type === "ingresso";
+
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:8px;margin-bottom:5px;";
+      row.innerHTML = `<div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">${isIn ? "↗" : "↙"}</span>
+          <div style="font-size:13px;font-weight:600;color:${isIn ? "var(--green)" : "var(--amber)"};">${isIn ? "Entrata" : "Uscita"} · ${timeStr}</div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button data-pid="${p.id}" class="btn-edit-timb" style="background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.2);color:var(--blue);border-radius:6px;padding:5px 9px;cursor:pointer;font-size:12px;">✏️ Modifica</button>
+          <button data-pid="${p.id}" class="btn-del-timb" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.2);color:var(--red);border-radius:6px;padding:5px 9px;cursor:pointer;font-size:12px;">🗑</button>
+        </div>`;
+      container.appendChild(row);
+    });
+  });
+
+  // Attach event listeners
+  container.querySelectorAll(".btn-edit-timb").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const p = window._timbData[btn.dataset.pid];
+      const ms = tsToMs(p.timestamp);
+      const d = ms ? new Date(ms) : new Date();
+      editTimb(p.id, p.type, p.date || d.toISOString().slice(0,10), d.getHours(), d.getMinutes());
+    });
+  });
+  container.querySelectorAll(".btn-del-timb").forEach(btn => {
+    btn.addEventListener("click", () => deleteTimb(btn.dataset.pid));
+  });
+}
+
+window.addManualTimb = async function() {
+  if (!_timbUserId) return;
+  const type = document.getElementById("timbType").value;
+  const date = document.getElementById("timbDate").value;
+  const time = document.getElementById("timbTime").value;
+  if (!date || !time) { showToast("❌ Inserisci data e ora"); return; }
+  const { collection: c, Timestamp } = window._fbModules;
+  const { addDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+  const rawDate = new Date(date + "T" + time + ":00");
+  const rounded = roundTimestamp(rawDate, type);
+  const ts = Timestamp.fromDate(rounded);
+  const roundedTime = rounded.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const originalTime = rawDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  await addDoc(c(db, "punches"), { userId: _timbUserId, userName: _timbUserName, type, date, timestamp: ts, originalTime: rawDate.toISOString() });
+  showToast(originalTime !== roundedTime ? "✅ Aggiunta: " + roundedTime + " (inserita " + originalTime + ")" : "✅ Timbratura aggiunta: " + roundedTime);
+  await loadTimbList();
+};
+
+window.addFullDay = async function() {
+  if (!_timbUserId) return;
+  const date = document.getElementById("timbDayDate").value;
+  const timeIn = document.getElementById("timbDayIn").value;
+  const timeOut = document.getElementById("timbDayOut").value;
+  if (!date || !timeIn || !timeOut) { showToast("❌ Inserisci data, entrata e uscita"); return; }
+  if (timeOut <= timeIn) { showToast("❌ L'uscita deve essere dopo l'entrata"); return; }
+  const { collection: c, Timestamp } = window._fbModules;
+  const { addDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+  const rawIn = new Date(date + "T" + timeIn + ":00");
+  const rawOut = new Date(date + "T" + timeOut + ":00");
+  const roundedIn = roundTimestamp(rawIn, "ingresso");
+  const roundedOut = roundTimestamp(rawOut, "uscita");
+  await addDoc(c(db, "punches"), { userId: _timbUserId, userName: _timbUserName, type: "ingresso", date, timestamp: Timestamp.fromDate(roundedIn), originalTime: rawIn.toISOString() });
+  await addDoc(c(db, "punches"), { userId: _timbUserId, userName: _timbUserName, type: "uscita", date, timestamp: Timestamp.fromDate(roundedOut), originalTime: rawOut.toISOString() });
+  const inStr = roundedIn.toLocaleTimeString("it-IT", {hour:"2-digit",minute:"2-digit"});
+  const outStr = roundedOut.toLocaleTimeString("it-IT", {hour:"2-digit",minute:"2-digit"});
+  showToast("✅ Giornata aggiunta: " + inStr + " → " + outStr);
+  await loadTimbList();
+};
+
+window.deleteTimb = async function(pid) {
+  if (!confirm("Eliminare questa timbratura?")) return;
+  const { doc: d } = window._fbModules;
+  const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+  await deleteDoc(d(db, "punches", pid));
+  showToast("🗑 Timbratura eliminata");
+  await loadTimbList();
+};
+
+window.editTimb = async function(pid, currentType, date, h, m) {
+  // Show inline edit form
+  const row = document.querySelector(`[data-timb-id="${pid}"]`);
+  const modal = document.createElement("div");
+  modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px;";
+  const hh = String(h).padStart(2,"0");
+  const mm2 = String(m).padStart(2,"0");
+  modal.innerHTML = `<div style="background:var(--card);border-radius:16px;padding:24px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+    <div style="font-size:16px;font-weight:700;margin-bottom:16px;">✏️ Modifica timbratura</div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Tipo</label>
+        <select id="editTimbType" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text);border-radius:8px;padding:10px;font-family:inherit;font-size:14px;">
+          <option value="ingresso" ${currentType==="ingresso"?"selected":""}>↗ Entrata</option>
+          <option value="uscita" ${currentType==="uscita"?"selected":""}>↙ Uscita</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Data</label>
+        <input type="date" id="editTimbDate" value="${date}" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text);border-radius:8px;padding:10px;font-family:inherit;font-size:14px;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Ora</label>
+        <input type="time" id="editTimbTime" value="${hh}:${mm2}" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text);border-radius:8px;padding:10px;font-family:inherit;font-size:14px;box-sizing:border-box;">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button id="cancelEditTimb" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text);border-radius:10px;padding:12px;cursor:pointer;font-family:inherit;font-size:14px;">Annulla</button>
+      <button id="saveEditTimb" style="flex:1;background:var(--blue);color:#000;border:none;border-radius:10px;padding:12px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;">Salva</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  document.getElementById("cancelEditTimb").onclick = () => modal.remove();
+  document.getElementById("saveEditTimb").onclick = async () => {
+    const newType = document.getElementById("editTimbType").value;
+    const newDate = document.getElementById("editTimbDate").value;
+    const newTime = document.getElementById("editTimbTime").value;
+    if (!newDate || !newTime) { showToast("❌ Compila tutti i campi"); return; }
+    const { doc: d, Timestamp } = window._fbModules;
+    const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+    const rawDate = new Date(newDate + "T" + newTime + ":00");
+    const rounded = roundTimestamp(rawDate, newType);
+    const ts = Timestamp.fromDate(rounded);
+    await updateDoc(d(db, "punches", pid), { type: newType, timestamp: ts, date: newDate, originalTime: rawDate.toISOString() });
+    showToast("✅ Modificata → " + rounded.toLocaleTimeString("it-IT", {hour:"2-digit",minute:"2-digit"}));
+    modal.remove();
+    await loadTimbList();
+  };
+};
+
+
+let _reportEditUserId=null,_reportEditUserName=null,_reportEditDate=null;
+window.openReportDayEdit=async function(uid,uname,date){
+  _reportEditUserId=uid;_reportEditUserName=uname;_reportEditDate=date;
+  var d=new Date(date+"T12:00:00");
+  document.getElementById("reportDayModalTitle").textContent=uname+" - "+d.toLocaleDateString("it-IT",{weekday:"long",day:"2-digit",month:"long"});
+  var q=window._fbModules.query,c=window._fbModules.collection,w=window._fbModules.where;
+  var snap=await getDocs(q(c(db,"punches"),w("userId","==",uid),w("date","==",date)));
+  var punches=[];snap.forEach(function(doc){punches.push(Object.assign({id:doc.id},doc.data()));});
+  punches.sort(function(a,b){var ta=a.timestamp&&a.timestamp.toDate?a.timestamp.toDate():new Date(a.timestamp);var tb=b.timestamp&&b.timestamp.toDate?b.timestamp.toDate():new Date(b.timestamp);return ta-tb;});
+  function toTime(ts){if(!ts)return"";var t=ts.toDate?ts.toDate():new Date(ts);return String(t.getHours()).padStart(2,"0")+":"+String(t.getMinutes()).padStart(2,"0");}
+  var firstIn=punches.find(function(p){return p.type==="ingresso";});
+  var lastOut=punches.slice().reverse().find(function(p){return p.type==="uscita";});
+  document.getElementById("reportDayIn").value=firstIn?toTime(firstIn.timestamp):"";
+  document.getElementById("reportDayOut").value=lastOut?toTime(lastOut.timestamp):"";
+  document.getElementById("reportDayModal").style.display="flex";
+};
+window.closeReportDayModal=function(){document.getElementById("reportDayModal").style.display="none";};
+window.saveReportDay=async function(){
+  if(!_reportEditUserId||!_reportEditDate)return;
+  var timeIn=document.getElementById("reportDayIn").value;
+  var timeOut=document.getElementById("reportDayOut").value;
+  var q=window._fbModules.query,c=window._fbModules.collection,w=window._fbModules.where,Ts=window._fbModules.Timestamp;
+  var mods=await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+  var snap=await getDocs(q(c(db,"punches"),w("userId","==",_reportEditUserId),w("date","==",_reportEditDate)));
+  var dels=[];snap.forEach(function(doc){dels.push(mods.deleteDoc(mods.doc(db,"punches",doc.id)));});
+  await Promise.all(dels);
+  if(timeIn){var tsIn=Ts.fromDate(new Date(_reportEditDate+"T"+timeIn+":00"));await mods.addDoc(c(db,"punches"),{userId:_reportEditUserId,userName:_reportEditUserName,type:"ingresso",date:_reportEditDate,timestamp:tsIn});}
+  if(timeOut){var tsOut=Ts.fromDate(new Date(_reportEditDate+"T"+timeOut+":00"));await mods.addDoc(c(db,"punches"),{userId:_reportEditUserId,userName:_reportEditUserName,type:"uscita",date:_reportEditDate,timestamp:tsOut});}
+  showToast("Giorno aggiornato!");closeReportDayModal();await window.loadCapoStats();
+};
+
+window.toggleRole = async function(uid, currentRole) {
+  if (currentUser.role !== "capo") { showToast("Accesso non autorizzato"); return; }
+  var newRole = currentRole === "capo" ? "collaboratore" : "capo";
+  var label = newRole === "capo" ? "Capo" : "Collaboratore";
+  if (!confirm("Cambiare ruolo a " + label + "?")) return;
+  var d = window._fbModules.doc;
+  var mods = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+  await mods.updateDoc(d(db, "users", uid), { role: newRole });
+  showToast("Ruolo aggiornato: " + label);
+  loadTeam();
+};
 
 window.removeUser = async function(uid) {
   if (!confirm('Rimuovere questo utente?')) return;
@@ -1532,7 +2019,7 @@ function updateNotifStatus() {
     const h = localStorage.getItem('reminderHour') || '18';
     const sel = document.getElementById('reminderHourInput');
     if (sel) sel.value = h;
-    el.innerHTML = '✅ <strong>Notifiche attive!</strong> Riceverai un reminder alle ' + h + ':00 se non hai timbrato l'uscita.';
+    el.innerHTML = '✅ <strong>Notifiche attive!</strong> Riceverai un reminder alle ' + h + ':00 se non hai timbrato l\'uscita.';
     el.style.color = 'var(--green)';
   } else if (perm === 'denied') {
     el.innerHTML = '🚫 <strong>Notifiche bloccate.</strong> Vai nelle impostazioni del browser e abilita le notifiche per questo sito.';
