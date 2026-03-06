@@ -284,28 +284,53 @@ function updatePunchUI(punches) {
   const lastOutMs = lastOut ? tsToMs(lastOut.timestamp) : null;
   const isPresente = lastIn && (lastOutMs === null || lastInMs > lastOutMs);
   window._isPresente = isPresente;
-  window._punchesToday = valid; // calcTotalMs con includeOpen=true per il timer live
+  window._punchesToday = valid;
 
   document.getElementById('pcEntrata').textContent = fmtTime(lastIn?.timestamp);
   document.getElementById('pcUscita').textContent = fmtTime(lastOut?.timestamp);
 
+  // === BANNER STATO GRANDE ===
+  let banner = document.getElementById('statusBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'statusBanner';
+    banner.style.cssText = 'width:100%;border-radius:14px;padding:18px 20px;margin-bottom:20px;text-align:center;font-family:Syne,sans-serif;transition:all 0.4s;';
+    const card = document.querySelector('.punch-card');
+    if (card) card.insertBefore(banner, card.querySelector('.punch-times'));
+  }
+
+  if (isPresente) {
+    const entTime = fmtTime(lastIn?.timestamp);
+    banner.style.background = 'rgba(34,197,94,0.18)';
+    banner.style.border = '2px solid rgba(34,197,94,0.5)';
+    banner.innerHTML = `<div style="font-size:28px;margin-bottom:4px;">🟢</div><div style="font-size:20px;font-weight:800;color:#22c55e;letter-spacing:1px;">SEI IN SEDE</div><div style="font-size:13px;color:#86efac;margin-top:4px;">Entrato alle <strong>${entTime}</strong> — ricordati di timbrare l'uscita!</div>`;
+    document.getElementById('liveTimer').style.display = 'block';
+  } else if (punches.length > 0) {
+    const outTime = fmtTime(lastOut?.timestamp);
+    banner.style.background = 'rgba(245,158,11,0.15)';
+    banner.style.border = '2px solid rgba(245,158,11,0.4)';
+    banner.innerHTML = `<div style="font-size:28px;margin-bottom:4px;">🟡</div><div style="font-size:20px;font-weight:800;color:#f59e0b;letter-spacing:1px;">HAI TIMBRATO USCITA</div><div style="font-size:13px;color:#fcd34d;margin-top:4px;">Uscito alle <strong>${outTime}</strong> — buona giornata!</div>`;
+    document.getElementById('liveTimer').style.display = 'none';
+  } else {
+    banner.style.background = 'rgba(113,113,122,0.12)';
+    banner.style.border = '2px solid rgba(113,113,122,0.2)';
+    banner.innerHTML = `<div style="font-size:28px;margin-bottom:4px;">⚪</div><div style="font-size:20px;font-weight:800;color:#71717a;letter-spacing:1px;">NON ANCORA TIMBRATO</div><div style="font-size:13px;color:#a1a1aa;margin-top:4px;">Premi ENTRATA quando arrivi in sede</div>`;
+    document.getElementById('liveTimer').style.display = 'none';
+  }
+
+  // Pill piccola (la manteniamo ma meno prominente)
   const pill = document.getElementById('pcStatus');
   const txt = document.getElementById('pcStatusText');
   if (isPresente) {
-    pill.className = 'status-pill presente';
-    txt.textContent = 'In sede';
-    document.getElementById('liveTimer').style.display = 'block';
+    pill.className = 'status-pill presente'; txt.textContent = 'In sede';
   } else if (punches.length > 0) {
     pill.className = 'status-pill assente';
     pill.style.background = 'rgba(245,158,11,0.15)';
     pill.style.borderColor = 'rgba(245,158,11,0.3)';
     pill.querySelector('.status-dot').style.background = '#f59e0b';
     txt.textContent = 'Uscito';
-    document.getElementById('liveTimer').style.display = 'none';
   } else {
-    pill.className = 'status-pill assente';
-    txt.textContent = 'Non registrato oggi';
-    document.getElementById('liveTimer').style.display = 'none';
+    pill.className = 'status-pill assente'; txt.textContent = 'Non registrato oggi';
   }
 
   document.getElementById('btnEntrata').disabled = isPresente;
