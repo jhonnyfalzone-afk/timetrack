@@ -363,26 +363,37 @@ window.doPunch = async function(type) {
 let _unsubLog = null;
 function loadLog() {
   const { query: q, collection: c, where: w } = window._fbModules;
-  const box = document.getElementById('logList');
-  box.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
+  const box = document.getElementById("logLog");
+  const logBox = document.getElementById("logList");
+  if (!logBox) return;
+  logBox.innerHTML = "<div class=\"loading\"><div class=\"spinner\"></div>Caricamento...</div>";
   if (_unsubLog) { _unsubLog(); _unsubLog = null; }
   _unsubLog = onSnapshot(
-    q(c(db, 'punches'), w('userId', '==', currentUser.id)),
+    q(c(db, "punches"), w("userId", "==", currentUser.id)),
     (snap) => {
       const punches = [];
       snap.forEach(d => punches.push({ id: d.id, ...d.data() }));
       punches.sort((a, b) => (tsToMs(b.timestamp)||0) - (tsToMs(a.timestamp)||0));
-      if (!punches.length) { box.innerHTML = '<div class="empty">Nessun accesso registrato</div>'; return; }
+      if (!punches.length) { logBox.innerHTML = "<div class=\"empty\">Nessun accesso registrato</div>"; return; }
       const now = Date.now();
-      box.innerHTML = '<div style="padding:8px 20px;">' +
-        punches.slice(0, 100).map(p => {
-          const isIn = p.type === 'ingresso';
-          const canEdit = (now - (tsToMs(p.timestamp)||0)) < 30 * 60 * 1000;
-          const orig = p.originalTime ? '<div style="font-size:10px;color:var(--muted);margin-top:2px;">orig: ' + new Date(p.originalTime).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) + '</div>' : '';
-          return '<div class="log-item"><div class="log-icon ' + (isIn?'in':'out') + '">' + (isIn?'↗':'↙') + '</div><div class="log-text" style="flex:1;"><div class="log-type" style="color:' + (isIn?'var(--green)':'var(--amber)') + '">' + (isIn?'Entrata':'Uscita') + '</div><div class="log-date">' + fmtDateTime(p.timestamp) + '</div>' + orig + '</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;"><div class="log-time" style="color:' + (isIn?'var(--green)':'var(--amber)') + '">' + fmtTime(p.timestamp) + '</div>' + (canEdit ? '<button onclick="collaboratorCorrect('' + p.id + '','' + p.type + '')" style="font-size:10px;padding:3px 8px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.25);color:var(--blue);border-radius:6px;cursor:pointer;font-family:inherit;">✏️ Correggi</button>' : '') + '</div></div>';
-        }).join('') + '</div>';
+      const rows = punches.slice(0, 100).map(p => {
+        const isIn = p.type === "ingresso";
+        const ms = tsToMs(p.timestamp);
+        const canEdit = (now - (ms||0)) < 30 * 60 * 1000;
+        const origStr = p.originalTime ? new Date(p.originalTime).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}) : "";
+        const origHtml = origStr ? `<div style="font-size:10px;color:var(--muted);margin-top:2px;">orig: ${origStr}</div>` : "";
+        const color = isIn ? "var(--green)" : "var(--amber)";
+        const icon = isIn ? "↗" : "↙";
+        const label = isIn ? "Entrata" : "Uscita";
+        const editBtn = canEdit ? `<button data-pid="${p.id}" data-ptype="${p.type}" class="btn-collab-correct" style="font-size:10px;padding:3px 8px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.25);color:var(--blue);border-radius:6px;cursor:pointer;font-family:inherit;">✏️ Correggi</button>` : "";
+        return `<div class="log-item"><div class="log-icon ${isIn?"in":"out"}">${icon}</div><div class="log-text" style="flex:1;"><div class="log-type" style="color:${color}">${label}</div><div class="log-date">${fmtDateTime(p.timestamp)}</div>${origHtml}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;"><div class="log-time" style="color:${color}">${fmtTime(p.timestamp)}</div>${editBtn}</div></div>`;
+      });
+      logBox.innerHTML = `<div style="padding:8px 20px;">${rows.join("")}</div>`;
+      logBox.querySelectorAll(".btn-collab-correct").forEach(btn => {
+        btn.addEventListener("click", () => collaboratorCorrect(btn.dataset.pid, btn.dataset.ptype));
+      });
     },
-    (err) => { box.innerHTML = '<div class="error-msg" style="padding:12px;">❌ ' + err.message + '</div>'; }
+    (err) => { logBox.innerHTML = `<div class="error-msg" style="padding:12px;">❌ ${err.message}</div>`; }
   );
 }
 
