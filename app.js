@@ -392,7 +392,7 @@ function loadLog() {
   const logBox = document.getElementById("logList");
   if (!logBox) return;
   logBox.innerHTML = "<div class=\"loading\"><div class=\"spinner\"></div>Caricamento...</div>";
-  if (_unsubLog) { _unsubLog(); _unsubLog = null; }
+  if (_unsubLog) return;
   _unsubLog = onSnapshot(
     q(c(db, "punches"), w("userId", "==", currentUser.id)),
     (snap) => {
